@@ -33,9 +33,29 @@ public class MyConnectionService extends ConnectionService {
     @Override
     public Connection onCreateIncomingConnection(final PhoneAccountHandle connectionManagerPhoneAccount, final ConnectionRequest request) {
         final Connection connection = new Connection() {
+            private boolean isAnswered = false;
+            private boolean isRejected = false;
+
             @Override
             public void onAnswer() {
+                super.onAnswer();
+                this._onAnswer(0);
+            }
+
+            @Override
+            public void onAnswer(int videoState) {
+                super.onAnswer(videoState);
+                this._onAnswer(videoState);
+            }
+
+            private void _onAnswer(int videoState) {
+                if (isAnswered) {
+                    return;
+                }
+                isAnswered = true;
+
                 this.setActive();
+                this.setAudioModeIsVoip(true);
                 Intent intent = new Intent(CordovaCall.getCordova().getActivity().getApplicationContext(), CordovaCall.getCordova().getActivity().getClass());
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 CordovaCall.getCordova().getActivity().getApplicationContext().startActivity(intent);
@@ -53,6 +73,22 @@ public class MyConnectionService extends ConnectionService {
 
             @Override
             public void onReject() {
+                super.onReject();
+                this._onReject(0, null);
+            }
+
+            @Override
+            public void onReject(String replyMessage) {
+                super.onReject(replyMessage);
+                this._onReject(0, replyMessage);
+            }
+
+            private void _onReject(int rejectReason, String replyMessage) {
+                if (isRejected) {
+                    return;
+                }
+                isRejected = true;
+
                 DisconnectCause cause = new DisconnectCause(DisconnectCause.REJECTED);
                 this.setDisconnected(cause);
                 this.destroy();
@@ -118,6 +154,13 @@ public class MyConnectionService extends ConnectionService {
             @Override
             public void onAnswer() {
                 super.onAnswer();
+                this.setAudioModeIsVoip(true);
+            }
+
+            @Override
+            public void onAnswer(int videoState) {
+                super.onAnswer(videoState);
+                this.setAudioModeIsVoip(true);
             }
 
             @Override
@@ -170,6 +213,7 @@ public class MyConnectionService extends ConnectionService {
             connection.setStatusHints(statusHints);
         }
         connection.setDialing();
+        connection.setAudioModeIsVoip(true);
         conn = connection;
         ArrayList<CallbackContext> callbackContexts = CordovaCall.getCallbackContexts().get("sendCall");
         if(callbackContexts != null) {
